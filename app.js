@@ -13,17 +13,22 @@ const {
 
 // Helper: Get API token
 async function getApiToken() {
+  console.log("Started to get api token for ditat verification")
   const headers = {
     "Ditat-Application-Role": "Login to TMS",
     "ditat-account-id": "agylogistics",
     "Authorization": "Basic aG9zaGVscDp3RkxIbTYub2th",
   };
   const { data } = await axios.post(gettingTokenUrl, {}, { headers });
+  if (data) {
+    console.log(`API token ${data} retriving success`)
+  }
   return data;
 }
 
 // Helper: Fetch driver data
 async function fetchDrivers(apiToken) {
+  console.log("started fetching drivers data from system")
   const headers = {
     Authorization: `Ditat-Token ${apiToken}`,
   };
@@ -37,6 +42,9 @@ async function fetchDrivers(apiToken) {
     ],
   };
   const { data } = await axios.post(baseUrl, body, { headers });
+  if (data) {
+    console.log("data fetching success")
+  }
   return data?.data?.data || [];
 }
 
@@ -49,6 +57,8 @@ async function upsertDrivers(drivers) {
     database: db_name,
   });
 
+  console.log("data base connection success")
+  
   const sql = `
     INSERT INTO drivers (driverId, driver_data)
     VALUES (?, ?)
@@ -60,6 +70,7 @@ async function upsertDrivers(drivers) {
       const driverId = driver.driverId;
       const driverJson = JSON.stringify(driver);
       await connection.execute(sql, [driverId, driverJson]);
+      console.log(`driver ${driverId} data processing success`)
     }
     console.log(`[${new Date().toISOString()}] Upsert complete!`);
   } catch (error) {
