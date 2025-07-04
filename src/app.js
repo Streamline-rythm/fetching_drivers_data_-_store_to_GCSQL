@@ -3,32 +3,32 @@ const mysql = require("mysql2/promise");
 require("dotenv").config();
 
 const {
-  BASE_URL: baseUrl,
-  GETTING_TOEN_URL: gettingTokenUrl,
-  DB_HOST: db_host,
-  DB_USER: db_user,
-  DB_PASSWORD: db_password,
-  DB_NAME: db_name,
+  BASE_URL: BASE_URL,
+  GETTING_TOKEN_URL: GETTING_TOKEN_URL,
+  DB_HOST: DB_HOST,
+  DB_USER: DB_USER,
+  DB_PASSWORD: DB_PASSWORD,
+  DB_NAME: DB_NAME,
 } = process.env;
 
 // Helper: Get API token
 async function getApiToken() {
-  console.log("Started to get api token for ditat verification")
+  console.log("Start for getting API token")
   const headers = {
     "Ditat-Application-Role": "Login to TMS",
     "ditat-account-id": "agylogistics",
     "Authorization": "Basic aG9zaGVscDp3RkxIbTYub2th",
   };
-  const { data } = await axios.post(gettingTokenUrl, {}, { headers });
+  const { data } = await axios.post(GETTING_TOKEN_URL, {}, { headers });
   if (data) {
-    console.log(`API token ${data} retriving success`)
+    console.log(`API token= ${data}`)
   }
   return data;
 }
 
 // Helper: Fetch driver data
 async function fetchDrivers(apiToken) {
-  console.log("started fetching drivers data from system")
+  console.log("Start for retrieving drivers data from system")
   const headers = {
     Authorization: `Ditat-Token ${apiToken}`,
   };
@@ -41,9 +41,9 @@ async function fetchDrivers(apiToken) {
       },
     ],
   };
-  const { data } = await axios.post(baseUrl, body, { headers });
+  const { data } = await axios.post(BASE_URL, body, { headers });
   if (data) {
-    console.log("data fetching success")
+    console.log("Fetching drivers' data Successfully")
   }
   return data?.data?.data || [];
 }
@@ -51,14 +51,14 @@ async function fetchDrivers(apiToken) {
 // Helper: Upsert drivers into DB
 async function upsertDrivers(drivers) {
   const connection = await mysql.createConnection({
-    host: db_host,
-    user: db_user,
-    password: db_password,
-    database: db_name,
+    host: DB_HOST,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    database: DB_NAME,
   });
 
-  console.log("data base connection success")
-  
+  console.log("Database connection success")
+
   const sql = `
     INSERT INTO drivers (driverId, driver_data)
     VALUES (?, ?)
@@ -67,12 +67,13 @@ async function upsertDrivers(drivers) {
 
   try {
     for (const driver of drivers) {
-      const driverId = driver.driverId;
+      const driverId = driver[0];
       const driverJson = JSON.stringify(driver);
       await connection.execute(sql, [driverId, driverJson]);
-      console.log(`driver ${driverId} data processing success`)
+      console.log(`Driver ${driverId} data processing success`)
     }
     console.log(`[${new Date().toISOString()}] Upsert complete!`);
+    
   } catch (error) {
     console.error("Error during upsert:", error);
   } finally {
@@ -87,18 +88,18 @@ async function fetchAndUpsertDrivers() {
     const apiToken = await getApiToken();
     const rawDrivers = await fetchDrivers(apiToken);
 
-    const drivers = rawDrivers.map((d) => ({
-      driverId: d.driverId,
-      Status: d.Status,
-      firstName: d.firstName,
-      lastName: d.lastName,
-      truckId: d.truckId,
-      phoneNumber: d.phoneNumber,
-      emailAddress: d.emailAddress,
-      hiredOn: d.hiredOn,
-      updatedOn: d.updatedOn,
-      companyId: d.companyId,
-    }));
+    const drivers = rawDrivers.map((d) => ([
+      d.driverId,
+      d.Status,
+      d.firstName,
+      d.lastName,
+      d.truckId,
+      d.phoneNumber,
+      d.emailAddress,
+      d.hiredOn,
+      d.updatedOn,
+      d.companyId,
+    ]));
 
     await upsertDrivers(drivers);
   } catch (error) {
