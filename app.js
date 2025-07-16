@@ -1,6 +1,7 @@
 import axios from 'axios';
 import mysql from "mysql2/promise";
 import dotenv from 'dotenv';
+import fs from 'fs'
 
 dotenv.config();
 
@@ -34,7 +35,7 @@ const dispatcherIDs = [
 
 // Get API token
 async function getApiToken() {
-  console.log("Start for getting API token");
+  console.log("--------------- Getting API token ----------------");
   const headers = {
     "Ditat-Application-Role": "Login to TMS",
     "ditat-account-id": "agylogistics",
@@ -43,19 +44,19 @@ async function getApiToken() {
   try {
     const { data } = await axios.post(GETTING_TOKEN_URL, {}, { headers });
     if (data) {
-      console.log(`API token= ${JSON.stringify(data)}`);
+      console.log(`✔✔✔API token= ${JSON.stringify(data)}`);
       return data;
     }
   } catch (error) {
-    console.error("Error getting API token:", error.message);
+    console.error("❌❌❌Error getting API token:", error.message);
     throw error;
   }
   return null;
 }
 
-// Fetch All drivers data
+// Fetch all drivers data
 async function fetchDrivers(apiToken) {
-  console.log("Start for retrieving drivers data from system");
+  console.log("---------------------- Getting drivers data ----------------------");
   const headers = {
     Authorization: `Ditat-Token ${apiToken}`,
   };
@@ -71,11 +72,11 @@ async function fetchDrivers(apiToken) {
   try {
     const { data } = await axios.post(GETTING_ALL_DRIVERS_URL, body, { headers });
     if (data) {
-      console.log("Fetching drivers' data Successfully");
+      console.log("✔✔✔Fetching drivers data Success");
       return data?.data?.data || [];
     }
   } catch (error) {
-    console.error("Error fetching drivers:", error.message);
+    console.error("❌❌❌Error fetching drivers:", error.message);
     throw error;
   }
   return [];
@@ -83,15 +84,13 @@ async function fetchDrivers(apiToken) {
 
 // Fetch All Dispatchers data
 async function getAllDispatchersData(apiToken) {
-  console.log("Start retrieving Dispatchers data from system");
+  console.log("-------------------Getting Dispatchers ---------------------");
   const driverAndDispatcher = {};
 
   for (const individualDispatcher of dispatcherIDs) {
-    console.log(`Retrieving ${individualDispatcher}'s drivers`);
-
+    console.log(`✔✔✔ Retrieving ${dispatcherIdAndName[individualDispatcher]}'s drivers`);
     const each_dispatcher_url = `${GETTING_DISPATCHERS_URL}/${individualDispatcher}/item`;
-
-    console.log(`${individualDispatcher}'s API calling url`);
+    console.log(`✔✔✔ ${dispatcherIdAndName[individualDispatcher]}'s API calling url=${each_dispatcher_url}`);
 
     const headers = {
       Authorization: `Ditat-Token ${apiToken}`
@@ -99,20 +98,19 @@ async function getAllDispatchersData(apiToken) {
 
     try {
       const { data } = await axios.get(each_dispatcher_url, { headers });
-      console.log(`data=${data.data[0].recordId}`);
-
       const oneDispatcherDriversInformation = data.data
       oneDispatcherDriversInformation.forEach(element => {
         let driver = element.recordId.trim();
         driverAndDispatcher[driver] = dispatcherIdAndName[individualDispatcher];
       });
     } catch (error) {
-      console.log("Error getting Dispatchers data:", error.message);
+      console.log("❌❌❌ Error getting Dispatchers data:", error.message);
       throw error;
     }
   }
   return driverAndDispatcher;
 }
+
 //  Upsert drivers into DB
 async function upsertDrivers(drivers) {
   const connection = await mysql.createConnection({
@@ -120,6 +118,11 @@ async function upsertDrivers(drivers) {
     user: DB_USER,
     password: DB_PASSWORD,
     database: DB_NAME,
+    ssl: {
+      ca: fs.readFileSync('./client_certification/server-ca.pem'),
+      cert: fs.readFileSync('./client_certification/client-cert.pem'),
+      key: fs.readFileSync('./client_certification/client-key.pem'),
+    }
   });
 
   console.log("Database connection success");
@@ -133,15 +136,15 @@ async function upsertDrivers(drivers) {
   try {
     for (const driver of drivers) {
       const driverId = driver[0];
-      const driverJson = JSON.stringify(driver);
-      console.log(`Upserting driverId: ${driverId}`);
+      const driverJson = JSON.stringify(driver).replace("[","").replace("]","").replace('"',"").replace("\\","");
+      console.log(`♻♻♻ Upserting driverId: ${driverId}`);
       await connection.execute(sql, [driverId, driverJson]);
-      console.log(`Driver ${driverId} data processing success`);
+      console.log(`♻♻♻ Driver ${driverId} data processing success`);
     }
     console.log(`[${new Date().toISOString()}] Upsert complete!`);
 
   } catch (error) {
-    console.error("Error during upsert:", error.message);
+    console.error("❌❌❌Error during upsert:", error.message);
   } finally {
     await connection.end();
   }
