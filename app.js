@@ -2,8 +2,18 @@ import axios from 'axios';
 import mysql from "mysql2/promise";
 import dotenv from 'dotenv';
 import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+console.log(join(__dirname, 'client_certification', 'server-ca.pem'));
+console.log(join(__dirname, 'client_certification', 'client-cert.pem'));
+console.log(join(__dirname, 'client_certification', 'client-key.pem'));
 
 const {
   GETTING_ALL_DRIVERS_URL,
@@ -119,9 +129,9 @@ async function upsertDrivers(drivers) {
     password: DB_PASSWORD,
     database: DB_NAME,
     ssl: {
-      ca: fs.readFileSync('./client_certification/server-ca.pem'),
-      cert: fs.readFileSync('./client_certification/client-cert.pem'),
-      key: fs.readFileSync('./client_certification/client-key.pem'),
+      ca: fs.readFileSync(path.join(__dirname, 'client_certification', 'server-ca.pem')),
+      cert: fs.readFileSync(path.join(__dirname, 'client_certification', 'client-cert.pem')),
+      key: fs.readFileSync(path.join(__dirname, 'client_certification', 'client-key.pem')),
     }
   });
 

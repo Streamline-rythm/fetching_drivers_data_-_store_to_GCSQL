@@ -57,3 +57,6 @@ dmypy.json
 
 client_certification
 ./client_certification
+
+node_modules
+./node_modules
